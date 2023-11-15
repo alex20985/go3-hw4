@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"fmt"
 	"html/template"
-	"math/rand"
+	"local/hw1/db"
+	"log"
 	"net/http"
+
+	"github.com/jackc/pgx/v5"
 )
 
 var layout = template.Must(template.ParseFiles(
@@ -13,86 +18,48 @@ var layout = template.Must(template.ParseFiles(
 	"card_empty.html.tmpl",
 ))
 
-var times = []string{
-	"08:00",
-	"09:00",
-	"10:00",
-	"11:00",
-}
-
-var dates = []string{
-	"2023-11-13",
-	"2023-11-14",
-	"2023-11-15",
-}
-
-var users = []string{
-	"women/1.jpg",
-	"women/2.jpg",
-	"women/3.jpg",
-	"women/4.jpg",
-	"men/1.jpg",
-	"men/2.jpg",
-	"men/3.jpg",
-	"men/4.jpg",
-}
-
-var places = []string{
-	"SM",
-	"MC",
-	"NA",
-	"NC",
-	"SM",
-	"VK",
-	"TGG",
-	"TGP",
-}
-
-type Card struct {
-	Time   string
-	Date   string
-	Title  string
-	User   string
-	Places []string
-}
+var seedFlag = flag.Bool("seed", false, "seed data to db")
+var ctx = context.Background()
+var queries *db.Queries
 
 func main() {
 
-	http.HandleFunc("/", handler)
+	fmt.Println("Starting db connection...")
+	conn, err := pgx.Connect(ctx, "user=postgres password=postgres dbname=db sslmode=disable host=localhost port=5435")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close(ctx)
+	queries = db.New(conn)
+
+	flag.Parse()
+	if *seedFlag {
+		seed() // seed data to db
+		return
+	}
+
 	fmt.Println("Server is running... http://localhost:3000/")
+	http.HandleFunc("/", handlerCardsList)
+	http.HandleFunc("/new", handlerCardNew)
 	http.ListenAndServe(":3000", nil)
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func handlerCardsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	//	placesRand := []string{}
-	//	for _, place := range places {
-	//		if rand.Intn(2) == 1 {
-	//			placesRand = append(placesRand, place)
-	//		}
-	//	}
-
-	//	if len(placesRand) > 4 {
-	//		placesRand = placesRand[:4]
-	//	}
-
-	cards := []Card{}
-	cardsCount := rand.Intn(3) + 1
-	for i := 0; i < cardsCount; i++ {
-		card := Card{
-			Time:   times[rand.Intn(len(times))],
-			Date:   dates[rand.Intn(len(dates))],
-			Title:  "Контент, который нужно опубликовать",
-			User:   users[rand.Intn(len(users))],
-			Places: []string{"NA", "MC"},
-		}
-
-		cards = append(cards, card)
+	cards, err := queries.ListCards(ctx)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	err := layout.Execute(w, cards)
+	err = layout.Execute(w, cards)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func handlerCardNew(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	// TODO
+	w.Write([]byte("OK"))
 }
