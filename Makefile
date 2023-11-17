@@ -16,7 +16,10 @@ migrateup:
 migratedown:
 	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5435/db?sslmode=disable" down
 
+seed:
+	go run . -seed
+
 sqlc:
 	sqlc generate
 
-.PHONY: pg_start pg_stop createdb dropdb migrateup migratedown sqlc
+.PHONY: pg_start pg_stop createdb dropdb migrateup migratedown seed sqlc

@@ -4,6 +4,14 @@ WHERE id = $1 LIMIT 1;
 
 -- name: ListCards :many
 SELECT * FROM cards
+WHERE 
+date = sqlc.arg(date1) OR
+date = sqlc.arg(date2) OR
+date = sqlc.arg(date3) OR
+date = sqlc.arg(date4) OR
+date = sqlc.arg(date5) OR
+date = sqlc.arg(date6) OR
+date = sqlc.arg(date7)
 ORDER BY date;
 
 -- name: CreateCard :one

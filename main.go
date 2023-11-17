@@ -4,62 +4,48 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"html/template"
-	"local/hw1/db"
+	"local/hw/db"
+	"local/hw/handlers"
 	"log"
-	"net/http"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var layout = template.Must(template.ParseFiles(
-	"layout.html.tmpl",
-	"card.html.tmpl",
-	"card_empty.html.tmpl",
-))
-
 var seedFlag = flag.Bool("seed", false, "seed data to db")
-var ctx = context.Background()
-var queries *db.Queries
 
 func main() {
+	flag.Parse()
 
 	fmt.Println("Starting db connection...")
-	conn, err := pgx.Connect(ctx, "user=postgres password=postgres dbname=db sslmode=disable host=localhost port=5435")
+	pool, err := pgxpool.New(context.Background(), "user=postgres password=postgres dbname=db sslmode=disable host=localhost port=5435")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Can not connect to db", err)
 	}
-	defer conn.Close(ctx)
-	queries = db.New(conn)
+	defer pool.Close()
 
-	flag.Parse()
+	store := db.NewStore(pool)
+
 	if *seedFlag {
-		seed() // seed data to db
+		db.Seed(store) // seed data to db
 		return
 	}
 
+	server := handlers.NewServer(store)
+
 	fmt.Println("Server is running... http://localhost:3000/")
-	http.HandleFunc("/", handlerCardsList)
-	http.HandleFunc("/new", handlerCardNew)
-	http.ListenAndServe(":3000", nil)
-}
-
-func handlerCardsList(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	cards, err := queries.ListCards(ctx)
+	err = server.Start()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Can not start server", err)
 	}
 
-	err = layout.Execute(w, cards)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	// http.HandleFunc("/card-modal", handlerCardModal)
 }
 
-func handlerCardNew(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	// TODO
-	w.Write([]byte("OK"))
-}
+// func handlerCardModal(w http.ResponseWriter, r *http.Request) {
+// 	// w.Header().Set("Content-Type", "text/html")
+
+// 	err := cardModal.Execute(w, nil)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 	}
+// }

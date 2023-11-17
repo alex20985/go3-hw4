@@ -84,11 +84,37 @@ func (q *Queries) GetCard(ctx context.Context, id int64) (Card, error) {
 
 const listCards = `-- name: ListCards :many
 SELECT id, time, date, title, client, "user" FROM cards
+WHERE 
+date = $1 OR
+date = $2 OR
+date = $3 OR
+date = $4 OR
+date = $5 OR
+date = $6 OR
+date = $7
 ORDER BY date
 `
 
-func (q *Queries) ListCards(ctx context.Context) ([]Card, error) {
-	rows, err := q.db.Query(ctx, listCards)
+type ListCardsParams struct {
+	Date1 string
+	Date2 string
+	Date3 string
+	Date4 string
+	Date5 string
+	Date6 string
+	Date7 string
+}
+
+func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listCards,
+		arg.Date1,
+		arg.Date2,
+		arg.Date3,
+		arg.Date4,
+		arg.Date5,
+		arg.Date6,
+		arg.Date7,
+	)
 	if err != nil {
 		return nil, err
 	}
